@@ -1,0 +1,26 @@
+{
+  "name": "Record Search",
+  "namespace": "RecordSearch",
+  "description": "Adds a search bar to find records by keywords across all fields.",
+  "authors": [
+    {
+      "name": "Quentin",
+      "email": "quentin.ladane@institutimagine.org",
+      "institution": "Institut Imagine"
+    }
+  ],
+  "framework-version": 8,
+  "permissions": [
+    "redcap_every_page_top"
+  ],
+  "links": {
+    "project": [],
+    "control-center": []
+  },
+  "system-settings": [],
+  "project-settings": [],
+  "compatibility": {
+    "php-version-min": "7.0.0",
+    "redcap-version-min": "9.0.0"
+  }
+}
