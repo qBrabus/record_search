@@ -24,13 +24,13 @@ try {
     $mode  = isset($_POST['mode']) ? (string)$_POST['mode'] : 'record';
 
     if (mb_strlen($query, 'UTF-8') < 2) {
-        echo json_encode(['success' => true, 'results' => [], 'debug' => $debug ? ['note'=>'query<2'] : null], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['success' => true, 'results' => [], 'debug' => $debug ? ['note'=>'requête<2'] : null], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
     $t0 = microtime(true);
 
-    rs_log("AJAX request", [
+    rs_log("Requête AJAX", [
         "pid" => $pid,
         "user" => USERID,
         "mode" => $mode,
@@ -78,9 +78,9 @@ try {
 } catch (Throwable $e) {
     http_response_code(500);
     if (function_exists('rs_log')) {
-        rs_log("AJAX ERROR", ["err"=>$e->getMessage(), "file"=>$e->getFile(), "line"=>$e->getLine()]);
+        rs_log("Erreur AJAX", ["err"=>$e->getMessage(), "file"=>$e->getFile(), "line"=>$e->getLine()]);
     } else {
-        error_log("[RecordSearch] AJAX ERROR: " . $e->getMessage());
+        error_log("[RecordSearch] Erreur AJAX : " . $e->getMessage());
     }
 
     echo json_encode([
