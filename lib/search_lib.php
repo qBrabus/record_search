@@ -3,7 +3,7 @@
 
 /**
  * Petit module utilitaire, parce que la vie est courte et les bugs sont nombreux.
- * Dépend des fonctions REDCap: db_query, db_fetch_assoc, db_escape, db_num_rows, db_error
+ * Dépend des fonctions REDCap : db_query, db_fetch_assoc, db_escape, db_num_rows, db_error
  */
 
 function rs_log(string $msg, array $ctx = []): void
@@ -36,8 +36,16 @@ function rs_table_exists(string $table): bool
     return ($res !== false) && (db_num_rows($res) > 0);
 }
 
+function rs_column_exists(string $table, string $column): bool
+{
+    $t = db_escape($table);
+    $c = db_escape($column);
+    $res = db_query("SHOW COLUMNS FROM `$t` LIKE '$c'");
+    return ($res !== false) && (db_num_rows($res) > 0);
+}
+
 /**
- * Détermine quels champs servent de "label" (ou identifiant secondaire) pour la recherche user-friendly.
+ * Détermine quels champs servent de "label" (ou identifiant secondaire) pour une recherche conviviale.
  * - secondary_pk (champ unique secondaire)
  * - custom_record_label (parse des [field_name])
  * - fallback optionnel : pseudonymisation (utile chez toi)
@@ -63,12 +71,12 @@ function rs_get_label_fields(int $pid, bool $debug = false): array
         }
     }
 
-    // Fallback pragmatique (optionnel mais utile dans ton cas)
+    // Repli pragmatique (optionnel mais utile dans ton cas)
     $fields[] = 'pseudonymisation';
 
     $fields = array_values(array_unique(array_filter($fields)));
 
-    if ($debug) rs_log("label fields", ["pid" => $pid, "fields" => $fields]);
+    if ($debug) rs_log("champs label", ["pid" => $pid, "fields" => $fields]);
 
     return $fields;
 }
@@ -97,7 +105,7 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
         }, $labelFields));
     }
 
-    // DAG au niveau record
+    // DAG au niveau record (filtre des enregistrements autorisés)
     $dagJoin = "";
     $dagWhere = "";
     if ($dagGroupId !== null) {
@@ -107,7 +115,7 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
         $dagWhere = " and gr.group_id = " . intval($dagGroupId) . " ";
     }
 
-    // Sous-requête label (évite les doublons multi-events/instances)
+    // Sous-requête label (évite les doublons multi-événements/instances)
     $labelJoin = "";
     if ($primaryLabelField !== '') {
         $pf = db_escape($primaryLabelField);
@@ -123,7 +131,14 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
         ";
     }
 
-    // Records candidats = (record like) UNION (label field value like)
+    // Pour les champs "checkbox", le nom stocké est field___code : on ajoute un LIKE par champ
+    $labelLikeParts = [];
+    foreach ($labelFields as $field) {
+        $labelLikeParts[] = "d.field_name like '" . db_escape($field) . "___%'";
+    }
+    $labelLikeSql = !empty($labelLikeParts) ? " or " . implode(" or ", $labelLikeParts) : "";
+
+    // Records candidats = (record like) UNION (valeurs de champs label)
     $sql = "
         select
             r.record,
@@ -138,7 +153,7 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
             select distinct d.record
             from redcap_data d
             where d.project_id = " . intval($pid) . "
-              and d.field_name in ($labelIn)
+              and (d.field_name in ($labelIn)$labelLikeSql)
               and lower(d.value) like lower('$like')
             " : "") . "
         ) r
@@ -150,11 +165,11 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
         limit " . intval($max) . "
     ";
 
-    if ($debug) rs_log("patient_suggestions SQL", ["pid" => $pid, "q" => $q, "sql" => $sql, "dag" => $dagGroupId]);
+    if ($debug) rs_log("SQL suggestions patients", ["pid" => $pid, "q" => $q, "sql" => $sql, "dag" => $dagGroupId]);
 
     $res = db_query($sql);
     if ($res === false) {
-        throw new Exception("SQL error (suggestions): " . db_error());
+        throw new Exception("Erreur SQL (suggestions) : " . db_error());
     }
 
     $out = [];
@@ -176,9 +191,9 @@ function rs_patient_suggestions(int $pid, string $query, int $max = 12, bool $de
 }
 
 /**
- * Full text (paginé) :
- * record OR value OR field label/name.
- * NOTE: Le join sur la table repeat est optionnel (ne doit pas crasher si absente).
+ * Texte intégral (paginé) :
+ * record OU valeur OU libellé/nom du champ.
+ * Note : le join sur la table repeat est optionnel (ne doit pas crasher si absente).
  */
 function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bool $debug = false): array
 {
@@ -188,7 +203,7 @@ function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bo
 
     $dagGroupId = defined('USERID') ? rs_user_dag_group_id($pid, USERID) : null;
 
-    // DAG au niveau record
+    // DAG au niveau record (filtre des enregistrements autorisés)
     $dagJoin = "";
     $dagWhere = "";
     if ($dagGroupId !== null) {
@@ -214,6 +229,16 @@ function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bo
         $repeatSelect = "r.repeat_instrument, r.repeat_instance";
     }
 
+    // Colonne du libellé de champ selon la version de REDCap
+    $labelColumn = null;
+    if (rs_column_exists('redcap_metadata', 'field_label')) {
+        $labelColumn = 'm.field_label';
+    } elseif (rs_column_exists('redcap_metadata', 'element_label')) {
+        $labelColumn = 'm.element_label';
+    }
+    $labelSelect = $labelColumn ? "$labelColumn as field_label" : "'' as field_label";
+    $labelSearch = $labelColumn ? "lower(coalesce($labelColumn,'')) like lower('$like')" : "false";
+
     $sql = "
         select
             d.record,
@@ -223,7 +248,7 @@ function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bo
             d.instance,
             d.field_name,
             m.form_name,
-            m.field_label,
+            $labelSelect,
             d.value
         from redcap_data d
         left join redcap_events_metadata e
@@ -243,13 +268,13 @@ function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bo
                 lower(d.record) like lower('$like')
              or lower(d.value) like lower('$like')
              or lower(d.field_name) like lower('$like')
-             or lower(coalesce(m.field_label,'')) like lower('$like')
+             or $labelSearch
           )
         order by d.record, d.event_id, d.field_name
         limit " . intval($limit) . " offset " . intval($offset) . "
     ";
 
-    if ($debug) rs_log("fulltext SQL", [
+    if ($debug) rs_log("SQL texte intégral", [
         "pid" => $pid,
         "q" => $q,
         "limit" => $limit,
@@ -261,7 +286,7 @@ function rs_fulltext_search(int $pid, string $query, int $limit, int $offset, bo
 
     $res = db_query($sql);
     if ($res === false) {
-        throw new Exception("SQL error (fulltext): " . db_error());
+        throw new Exception("Erreur SQL (texte intégral) : " . db_error());
     }
 
     $rows = [];

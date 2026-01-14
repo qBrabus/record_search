@@ -22,12 +22,12 @@ if (!defined('USERID') || USERID === '' || $pid <= 0) {
 
 require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 
-echo "<script>console.log('[RecordSearch] fulltext page', " . json_encode([
+echo "<script>console.log('[RecordSearch] page texte intégral', " . json_encode([
     'pid'=>$pid,'q'=>$q,'page'=>$page,'debug'=>$debug,'uri'=>($_SERVER['REQUEST_URI'] ?? '')
 ], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) . ");</script>";
 
 echo "<div class='rs-page'>";
-echo "<h3>Full text search</h3>";
+echo "<h3>Recherche texte intégral</h3>";
 
 echo "<form method='get' class='rs-form' style='margin-bottom:10px;'>";
 echo "<input type='hidden' name='pid' value='".htmlspecialchars((string)$pid, ENT_QUOTES)."'>";
@@ -69,7 +69,8 @@ foreach ($rows as $r) {
     $repeatInstr = (string)($r['repeat_instrument'] ?? '');
     $repeatInst = (string)($r['repeat_instance'] ?? '');
     $form = (string)($r['form_name'] ?? '');
-    $fieldLabel = strip_tags((string)($r['field_label'] ?? $r['field_name']));
+    $fieldLabelRaw = trim((string)($r['field_label'] ?? ''));
+    $fieldLabel = strip_tags($fieldLabelRaw !== '' ? $fieldLabelRaw : (string)$r['field_name']);
     $value = (string)$r['value'];
 
     $valueDisp = mb_strlen($value, 'UTF-8') > 180 ? mb_substr($value, 0, 180, 'UTF-8') . "…" : $value;
@@ -85,9 +86,9 @@ foreach ($rows as $r) {
             ($eventId ? "&event_id=" . $eventId : "") .
             "&page=" . urlencode($form);
 
-            if ($repeatInst !== '' && ctype_digit($repeatInst) && (int)$repeatInst > 1) {
-                $dataEntry .= "&instance=" . $repeatInst;
-}
+        if ($repeatInst !== '' && ctype_digit($repeatInst) && (int)$repeatInst > 1) {
+            $dataEntry .= "&instance=" . $repeatInst;
+        }
     }
 
     echo "<tr>";

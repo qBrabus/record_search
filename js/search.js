@@ -1,4 +1,4 @@
-// js/search.js
+// js/search.js - logique de la barre de recherche
 (function () {
   function debounce(fn, delay) {
     let t = null;
@@ -30,6 +30,7 @@
 
     let lastXhr = null;
 
+    // Log conditionnel pour le mode debug
     function log() {
       if (!cfg.debug) return;
       console.log.apply(console, arguments);
@@ -71,7 +72,7 @@
         redcap_csrf_token: getCsrfToken()
       };
 
-      log("[RecordSearch] AJAX start", { url: cfg.ajaxUrl, payload });
+      log("[RecordSearch] Démarrage AJAX", { url: cfg.ajaxUrl, payload });
 
       $results.html("<div class='rs-loading'>Recherche…</div>").show();
 
@@ -83,22 +84,22 @@
         data: payload
       }).done(function (res) {
         const dt = Math.round(performance.now() - t0);
-        log("[RecordSearch] AJAX done in " + dt + "ms", res);
+        log("[RecordSearch] AJAX terminé en " + dt + "ms", res);
 
         if (!res) { showError("Réponse vide"); return; }
-        if (!res.success) { showError("Erreur backend", res.error || "unknown"); return; }
+        if (!res.success) { showError("Erreur backend", res.error || "inconnue"); return; }
 
-        // debug côté serveur si fourni
-        if (cfg.debug && res.debug) log("[RecordSearch] server debug:", res.debug);
+        // Debug côté serveur si fourni
+        if (cfg.debug && res.debug) log("[RecordSearch] debug serveur :", res.debug);
 
         showDropdown(res.results);
       }).fail(function (xhr, status, err) {
         const dt = Math.round(performance.now() - t0);
-        log("[RecordSearch] AJAX fail in " + dt + "ms", { status, err, xhr });
+        log("[RecordSearch] AJAX en échec en " + dt + "ms", { status, err, xhr });
 
         let details = "";
         try { details = (xhr && xhr.responseText) ? xhr.responseText.slice(0, 600) : ""; } catch (e) {}
-        showError("AJAX fail: " + status, details);
+        showError("AJAX en échec : " + status, details);
       });
     }
 
@@ -107,7 +108,7 @@
     $full.on("change", function () {
       clearDropdown();
       $hint.toggle($full.is(":checked"));
-      log("[RecordSearch] FullText toggled:", $full.is(":checked"));
+      log("[RecordSearch] Texte intégral activé :", $full.is(":checked"));
     });
 
     $input.on("input", function () {
@@ -123,7 +124,7 @@
 
         if ($full.is(":checked")) {
           const url = cfg.fulltextUrl + "&q=" + encodeURIComponent(q) + "&debug=" + (cfg.debug ? "1" : "0");
-          log("[RecordSearch] redirect fulltext:", url);
+          log("[RecordSearch] redirection texte intégral :", url);
           window.location.href = url;
         } else {
           doPatientSearch();
@@ -137,7 +138,7 @@
 
       if ($full.is(":checked")) {
         const url = cfg.fulltextUrl + "&q=" + encodeURIComponent(q) + "&debug=" + (cfg.debug ? "1" : "0");
-        log("[RecordSearch] click redirect fulltext:", url);
+        log("[RecordSearch] clic redirection texte intégral :", url);
         window.location.href = url;
       } else {
         doPatientSearch();
@@ -146,7 +147,7 @@
 
     $results.on("click", ".rs-item", function () {
       const url = $(this).data("url");
-      log("[RecordSearch] click suggestion =>", url);
+      log("[RecordSearch] clic suggestion =>", url);
       if (url) window.location.href = url;
     });
 
@@ -154,6 +155,6 @@
       if (!$(e.target).closest("#record-search-container").length) clearDropdown();
     });
 
-    log("[RecordSearch] Ready. Type something like: imagine");
+    log("[RecordSearch] Prêt. Essaie de taper : imagine");
   };
 })();

@@ -21,18 +21,18 @@ class RecordSearch extends AbstractExternalModule
         $jsUrl  = $this->getUrl('js/search.js');
         $cssUrl = $this->getUrl('css/search.css');
 
-        // IMPORTANT: pages/ ... (sinon erreur prefix)
+        // Important : pages/ ... (sinon erreur de préfixe)
         $ajaxUrl     = $this->getUrl('pages/search_ajax.php');
         $fulltextUrl = $this->getUrl('pages/fulltext_results.php');
 
-        // au cas où getUrl() ne mettrait pas pid
+        // Au cas où getUrl() ne mettrait pas pid
         if (strpos($ajaxUrl, 'pid=') === false)     $ajaxUrl     .= "&pid=" . $project_id;
         if (strpos($fulltextUrl, 'pid=') === false) $fulltextUrl .= "&pid=" . $project_id;
 
 
 
 
-        // Debug ON (pour toi). Tu pourras le passer à false après.
+        // Debug activé (pour toi). Tu pourras le passer à false après.
         $debug = true;
 
         ?>
@@ -48,10 +48,10 @@ class RecordSearch extends AbstractExternalModule
                             '<button type="button" id="record-search-btn" title="Rechercher">↩</button>' +
                         '</div>' +
                         '<label class="rs-fulltext">' +
-                            '<input type="checkbox" id="record-search-fulltext"> Full text' +
+                            '<input type="checkbox" id="record-search-fulltext"> Texte intégral' +
                         '</label>' +
                         '<div id="record-search-results" class="rs-dropdown"></div>' +
-                        '<div id="record-search-hint" class="rs-hint" style="display:none;">Full text: appuie sur Entrée</div>' +
+                        '<div id="record-search-hint" class="rs-hint" style="display:none;">Texte intégral : appuie sur Entrée</div>' +
                     '</div>';
 
                 var $projectLogo = $('#project-menu-logo');
@@ -67,12 +67,12 @@ class RecordSearch extends AbstractExternalModule
                     pid: <?php echo (int)$project_id; ?>
                 };
 
-                // Expose config dans la console
+                // Expose la configuration dans la console
                 window.RecordSearchCfg = cfg;
 
                 if (cfg.debug) {
-                    console.log("[RecordSearch] init cfg:", cfg);
-                    console.log("[RecordSearch] redcap_csrf_token present?", !!(window.redcap_csrf_token || (typeof redcap_csrf_token !== "undefined")));
+                    console.log("[RecordSearch] configuration initiale :", cfg);
+                    console.log("[RecordSearch] redcap_csrf_token présent ?", !!(window.redcap_csrf_token || (typeof redcap_csrf_token !== "undefined")));
                 }
 
                 window.RecordSearchInit(cfg);
